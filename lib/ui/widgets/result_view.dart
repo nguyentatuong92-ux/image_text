@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../providers/app_provider.dart';
 import '../../services/export_service.dart';
+import '../../services/smart_action_service.dart';
 
 class ResultView extends StatefulWidget {
   const ResultView({super.key});
@@ -29,19 +31,9 @@ class _ResultViewState extends State<ResultView> {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         if (provider.isProcessing) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 10),
-                  Text("Đang xử lý và dịch..."),
-                ],
-              ),
-            ),
-          );
+          return _buildShimmerLoading(context);
         }
+        // ... rest of the file
 
         if (provider.errorMessage != null) {
           return Center(
@@ -73,7 +65,7 @@ class _ResultViewState extends State<ResultView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.05),
+                color: Colors.blue.withAlpha(13),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -94,6 +86,20 @@ class _ResultViewState extends State<ResultView> {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => provider.toggleResultImageView(),
+                    icon: Icon(
+                      provider.showImageInResult
+                          ? Icons.image_not_supported
+                          : Icons.image,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
+                    tooltip: 'Ẩn/Hiện ảnh gốc',
+                    constraints: const BoxConstraints(),
+                    padding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(width: 12),
                   InkWell(
                     onTap: () => provider.toggleTranslationLanguage(),
                     borderRadius: BorderRadius.circular(20),
@@ -132,11 +138,55 @@ class _ResultViewState extends State<ResultView> {
                 ],
               ),
             ),
+            if (provider.detectedEntities.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Hành động thông minh:',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: provider.detectedEntities.map((entity) {
+                  IconData icon;
+                  String label;
+                  Color color;
+
+                  switch (entity.type) {
+                    case EntityType.phone:
+                      icon = Icons.phone;
+                      label = 'Gọi ${entity.value}';
+                      color = Colors.green;
+                      break;
+                    case EntityType.email:
+                      icon = Icons.email;
+                      label = 'Gửi Email';
+                      color = Colors.blue;
+                      break;
+                    case EntityType.url:
+                      icon = Icons.language;
+                      label = 'Mở Web';
+                      color = Colors.orange;
+                      break;
+                  }
+
+                  return ActionChip(
+                    avatar: Icon(icon, size: 16, color: Colors.white),
+                    label: Text(
+                      label,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                    backgroundColor: color,
+                    onPressed: () => provider.performSmartAction(entity),
+                  );
+                }).toList(),
+              ),
+            ],
             const SizedBox(height: 12),
             Container(
               constraints: const BoxConstraints(minHeight: 200),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                border: Border.all(color: Colors.blue.withAlpha(76)),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: TextField(
@@ -242,6 +292,14 @@ class _ResultViewState extends State<ResultView> {
                 const SizedBox(width: 15),
                 _buildActionButton(
                   context,
+                  icon: Icons.volume_up,
+                  label: 'Đọc',
+                  color: Colors.purple,
+                  onPressed: () => provider.speakResult(),
+                ),
+                const SizedBox(width: 15),
+                _buildActionButton(
+                  context,
                   icon: Icons.share,
                   label: 'Chia sẻ',
                   color: Colors.orange,
@@ -269,7 +327,7 @@ class _ResultViewState extends State<ResultView> {
           onPressed: onPressed,
           icon: Icon(icon),
           color: color,
-          style: IconButton.styleFrom(backgroundColor: color.withOpacity(0.1)),
+          style: IconButton.styleFrom(backgroundColor: color.withAlpha(26)),
         ),
         Text(
           label,
@@ -277,6 +335,98 @@ class _ResultViewState extends State<ResultView> {
             fontSize: 12,
             color: color,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildShimmerLoading(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(
+            height: 200,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: Shimmer.fromColors(
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+                child: Container(
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Shimmer.fromColors(
+                baseColor: baseColor,
+                highlightColor: highlightColor,
+                child: Container(
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(
+            4,
+            (index) => Shimmer.fromColors(
+              baseColor: baseColor,
+              highlightColor: highlightColor,
+              child: Column(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(width: 40, height: 10, color: Colors.white),
+                ],
+              ),
+            ),
           ),
         ),
       ],

@@ -33,15 +33,29 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.light,
             ),
             useMaterial3: true,
+            cardTheme: const CardThemeData(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
           ),
           darkTheme: ThemeData(
             colorScheme: ColorScheme.fromSeed(
               seedColor: Colors.blue,
               brightness: Brightness.dark,
-              surface: const Color(0xFF1E293B),
+              surface: const Color(
+                0xFF0F172A,
+              ), // Màu đậm hơn cho Dark Mode chuyên nghiệp
             ),
-            scaffoldBackgroundColor: const Color(0xFF1E293B),
+            scaffoldBackgroundColor: const Color(0xFF0F172A),
             useMaterial3: true,
+            cardTheme: const CardThemeData(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(Radius.circular(16)),
+              ),
+            ),
           ),
           home: const HomePage(),
         );

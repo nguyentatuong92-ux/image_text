@@ -8,6 +8,8 @@ import '../services/language_service.dart';
 import '../services/image_picker_service.dart';
 import '../services/image_cropper_service.dart';
 import '../services/history_service.dart';
+import '../services/tts_service.dart';
+import '../services/smart_action_service.dart';
 import 'package:intl/intl.dart';
 
 class AppProvider extends ChangeNotifier {
@@ -17,6 +19,8 @@ class AppProvider extends ChangeNotifier {
   final ImagePickerService _imagePickerService = ImagePickerService();
   final ImageCropperService _imageCropperService = ImageCropperService();
   final HistoryService _historyService = HistoryService();
+  final TtsService _ttsService = TtsService();
+  final SmartActionService _smartActionService = SmartActionService();
 
   File? _image;
   String _originalText = '';
@@ -26,6 +30,8 @@ class AppProvider extends ChangeNotifier {
   bool _isProcessing = false;
   String? _errorMessage;
   List<HistoryItem> _history = [];
+  List<DetectedEntity> _detectedEntities = [];
+  bool _showImageInResult = true;
 
   File? get image => _image;
   String get originalText => _originalText;
@@ -35,6 +41,8 @@ class AppProvider extends ChangeNotifier {
   bool get isProcessing => _isProcessing;
   String? get errorMessage => _errorMessage;
   List<HistoryItem> get history => _history;
+  List<DetectedEntity> get detectedEntities => _detectedEntities;
+  bool get showImageInResult => _showImageInResult;
 
   AppProvider() {
     _loadHistory();
@@ -48,6 +56,7 @@ class AppProvider extends ChangeNotifier {
   /// Cho phép cập nhật văn bản thủ công sau khi nhận diện hoặc dịch
   void updateResultText(String newText) {
     _translatedText = newText;
+    _detectedEntities = _smartActionService.detectEntities(newText);
     notifyListeners();
   }
 
@@ -81,7 +90,10 @@ class AppProvider extends ChangeNotifier {
       // 2. Language ID
       _sourceLanguage = await _languageService.identifyLanguage(_originalText);
 
-      // 3. Translation (to Vietnamese by default)
+      // 3. Smart Entity Detection
+      _detectedEntities = _smartActionService.detectEntities(_originalText);
+
+      // 4. Translation (to Vietnamese by default)
       _targetLanguage = 'vi';
       _translatedText = await _translationService.translate(
         _originalText,
@@ -129,6 +141,10 @@ class AppProvider extends ChangeNotifier {
 
       final langCode = await _languageService.identifyLanguage(_originalText);
       _sourceLanguage = langCode;
+
+      // Smart Entity Detection
+      _detectedEntities = _smartActionService.detectEntities(_originalText);
+
       _targetLanguage = 'vi';
       _translatedText = await _translationService.translate(
         _originalText,
@@ -207,13 +223,39 @@ class AppProvider extends ChangeNotifier {
     _translatedText = '';
     _errorMessage = null;
     _isProcessing = false;
+    _detectedEntities = [];
+    _ttsService.stop();
     notifyListeners();
+  }
+
+  Future<void> performSmartAction(DetectedEntity entity) async {
+    await _smartActionService.performAction(entity);
+  }
+
+  void toggleResultImageView() {
+    _showImageInResult = !_showImageInResult;
+    notifyListeners();
+  }
+
+  Future<void> speakResult() async {
+    final textToSpeak = _translatedText.isNotEmpty
+        ? _translatedText
+        : _originalText;
+    final langCode = _translatedText.isNotEmpty
+        ? _targetLanguage
+        : _sourceLanguage;
+    await _ttsService.speak(textToSpeak, langCode);
+  }
+
+  Future<void> stopSpeaking() async {
+    await _ttsService.stop();
   }
 
   @override
   void dispose() {
     _ocrService.dispose();
     _languageService.dispose();
+    _ttsService.stop();
     super.dispose();
   }
 }

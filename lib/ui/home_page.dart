@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../providers/theme_provider.dart';
 import 'widgets/image_display.dart';
-import 'widgets/action_buttons.dart';
 import 'widgets/result_view.dart';
 import 'widgets/history_list.dart';
 
@@ -71,18 +70,23 @@ class HomePage extends StatelessWidget {
             bottom: true,
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16.0, 16.0, 16.0, 40.0),
-              child: hasResult
-                  ? const ResultView()
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ImageDisplay(image: provider.image),
-                        const SizedBox(height: 30),
-                        const ActionButtons(),
-                        const SizedBox(height: 30),
-                        const HistoryList(),
-                      ],
-                    ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!hasResult) ...[
+                    ImageDisplay(image: provider.image),
+                    const SizedBox(height: 30),
+                    const HistoryList(),
+                  ] else ...[
+                    if (provider.showImageInResult &&
+                        provider.image != null) ...[
+                      ImageDisplay(image: provider.image),
+                      const SizedBox(height: 16),
+                    ],
+                    const ResultView(),
+                  ],
+                ],
+              ),
             ),
           ),
         );
